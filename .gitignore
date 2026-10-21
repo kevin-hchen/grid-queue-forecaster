@@ -1,0 +1,11 @@
+# Raw data — 15 MB Berkeley Lab file, not committed (re-download via README)
+data/raw/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store

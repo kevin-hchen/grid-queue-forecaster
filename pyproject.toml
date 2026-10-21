@@ -1,0 +1,23 @@
+[project]
+name = "grid-queue-forecaster"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Kevin Chen", email = "k546chen@uwaterloo.ca" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "lifelines>=0.30.3",
+    "matplotlib>=3.11.2",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
+    "pytest>=9.1.1",
+]
+
+[project.scripts]
+grid-queue-forecaster = "grid_queue_forecaster:main"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
