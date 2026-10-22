@@ -3,8 +3,11 @@
 import pandas as pd
 import pytest
 
-from src.clean import OBS_END, clean, tech_group
+from src.clean import OBS_END, RAW_PATH, clean, tech_group
 from src.validate import compare
+
+# The raw Berkeley Lab file isn't committed; on a fresh clone these tests skip.
+needs_raw = pytest.mark.skipif(not RAW_PATH.exists(), reason="raw LBNL file not downloaded")
 
 
 # ---- technology grouping (D7) --------------------------------------------
@@ -33,6 +36,8 @@ def test_tech_group(label, expected):
 
 @pytest.fixture(scope="module")
 def clean_df():
+    if not RAW_PATH.exists():
+        pytest.skip("raw LBNL file not downloaded")
     return clean()
 
 
@@ -66,6 +71,7 @@ def test_no_missing_queue_entry_dates(clean_df):
 
 # ---- exit check: counts match the Berkeley Lab report --------------------
 
+@needs_raw
 def test_counts_match_report_except_known_ercot_gap():
     cmp = compare()
     fails = cmp[~cmp["pass"]]
@@ -73,6 +79,7 @@ def test_counts_match_report_except_known_ercot_gap():
     assert list(zip(fails["region"], fails["status"])) == [("ERCOT", "active")]
 
 
+@needs_raw
 def test_operational_and_withdrawn_match_report_everywhere():
     cmp = compare()
     subset = cmp[cmp["status"].isin(["operational", "withdrawn"])]

@@ -14,9 +14,9 @@ Decisions implemented (see docs/DECISIONS.md):
       We keep them (we need the whole dataset) and impute the event date as
       q_date + the group-median observed lag for that outcome, flagged in
       event_date_source so the imputation is auditable and can be excluded in a
-      sensitivity run. Build dates also fall back to prop_date (proposed online
-      date) when on_date is missing, which is a genuine date rather than an
-      imputation.
+      sensitivity run. Build dates fall back to prop_date (the planned online
+      date) when on_date is missing: a reported date used as a stand-in for the
+      actual one, flagged separately from imputed dates.
   D7  Technology groups: solar, wind, storage, gas, hybrid (generation co-located
       with storage), other. Region is taken from the file's `region` column.
 """
@@ -85,7 +85,7 @@ def load_raw(path: Path = RAW_PATH) -> pd.DataFrame:
     return df
 
 
-def _group_median_lag_years(df: pd.DataFrame, outcome: str, event_col: str) -> pd.Series:
+def _group_median_lag_years(df: pd.DataFrame, outcome: str, event_col: str) -> tuple[pd.Series, float]:
     """Median observed lag (event_date - q_date) in years, per tech_group x region.
 
     Computed only from rows of this outcome that have BOTH a q_date and a real
@@ -112,10 +112,9 @@ def _impute_event_dates(df: pd.DataFrame) -> pd.DataFrame:
 
     # --- built ---
     built = df["outcome"] == "built"
-    df.loc[built & df["on_date"].notna(), ["event_date", "event_date_source"]] = None  # placeholder
     df.loc[built & df["on_date"].notna(), "event_date"] = df.loc[built & df["on_date"].notna(), "on_date"]
     df.loc[built & df["on_date"].notna(), "event_date_source"] = "on_date"
-    # fall back to proposed online date (a real date, not an imputation)
+    # fall back to the planned online date (a stand-in, flagged as prop_date)
     need = built & df["event_date"].isna() & df["prop_date"].notna()
     df.loc[need, "event_date"] = df.loc[need, "prop_date"]
     df.loc[need, "event_date_source"] = "prop_date"
@@ -168,14 +167,19 @@ def clean(path: Path = RAW_PATH) -> pd.DataFrame:
     df["duration_years"] = (df["event_date"] - df["q_date"]).dt.days / 365.25
     df["duration_years"] = df["duration_years"].clip(lower=0)
 
-    # Total nameplate across the (up to 3) co-located technologies.
+    # Total nameplate across the (up to 3) co-located technologies, split into
+    # generation and storage so storage isn't counted as new supply in Stage 4.
     df["mw_total"] = df[["mw_1", "mw_2", "mw_3"]].sum(axis=1, min_count=1)
+    df["mw_storage"] = sum(
+        df[f"mw_{i}"].where(df[f"type_{i}"].isin(STORAGE_TOKENS), 0).fillna(0) for i in (1, 2, 3)
+    )
+    df["mw_gen"] = df["mw_total"].fillna(0) - df["mw_storage"]
 
     out = df[[
         "q_id", "region", "state", "tech_group", "type_clean",
         "outcome", "suspended_flag",
-        "q_date", "q_year", "event_date", "event_date_source", "duration_years",
-        "mw_1", "mw_2", "mw_3", "mw_total",
+        "q_date", "q_year", "ia_date", "event_date", "event_date_source", "duration_years",
+        "mw_1", "mw_2", "mw_3", "mw_total", "mw_gen", "mw_storage",
     ]].reset_index(drop=True)
     return out
 
