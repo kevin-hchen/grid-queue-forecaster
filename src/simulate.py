@@ -35,7 +35,7 @@ import pandas as pd
 
 from src.backtest import build_probs_by_year, error_distribution, recalibrate, rolling_backtest
 from src.clean import OBS_END
-from src.survival import (FIG_DIR, GRID, INK, INK_2, OUT_DIR, REGIONS, _style, fit_curves,
+from src.survival import (FIG_DIR, GRID, INK, INK_2, OUT_DIR, REGIONS, TECHS, _style, fit_curves,
                           load_clean)
 
 YEARS = list(range(2026, 2031))
@@ -172,6 +172,25 @@ def main() -> None:
 
     table = pd.concat([by_region, national, storage])
     table.to_csv(OUT_DIR / "outlook.csv", index=False)
+
+    # By technology: generation MW, except storage-only projects, counted in
+    # storage MW (their generation MW is zero). Hybrids count their generation.
+    is_sto = (waiting["tech_group"] == "storage").to_numpy()
+    mw_tech = np.where(is_sto, mw_sto, mw_gen)
+    tech_id = pd.Categorical(waiting["tech_group"], categories=TECHS).codes
+    by_tech = summarise(simulate(odds, mw_tech, tech_id, len(TECHS), mu, sd, seed=0), TECHS)
+    by_tech["queue_gw"] = by_tech["group"].map(pd.Series(mw_tech, index=waiting.index)
+                                               .groupby(waiting["tech_group"]).sum() / 1000)
+    by_tech.to_csv(OUT_DIR / "outlook_by_tech.csv", index=False)
+
+    # By state (generation MW); projects with no US state are left out.
+    states = sorted(s for s in waiting["state"].dropna().unique() if s != "MX")
+    state_id = pd.Categorical(waiting["state"], categories=states).codes
+    has_state = state_id >= 0
+    by_state = summarise(simulate(odds[has_state], mw_gen[has_state], state_id[has_state], len(states),
+                                  mu, sd, seed=0), states)
+    by_state["queue_gw"] = by_state["group"].map(waiting.assign(mw=mw_gen).groupby("state")["mw"].sum() / 1000)
+    by_state.to_csv(OUT_DIR / "outlook_by_state.csv", index=False)
     queue_gw = waiting.groupby("region")["mw_gen"].sum().clip(lower=0) / 1000
     plot_outlook(by_region, national, queue_gw, FIG_DIR / "outlook.png")
 

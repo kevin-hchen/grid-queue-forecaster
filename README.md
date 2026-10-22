@@ -12,7 +12,9 @@ Of **1,415 GW** of generation waiting in US interconnection queues at the end of
 roughly **11% of the queue**, or ~31 GW a year, close to the ~29 GW a year queued
 projects actually delivered in 2021–25.
 
-![Queued today vs likely built by 2030](figures/outlook.png)
+![Queued today vs likely built by 2030](figures/headline.png)
+
+![By region](figures/outlook.png)
 
 | Region | Likely built by 2030 (P50, GW) | Range (P10–P90) | Queued today (GW) |
 |---|---|---|---|
@@ -28,9 +30,14 @@ projects actually delivered in 2021–25.
 | **US** | **153** | **100–235** | **1,415** |
 
 Storage is counted separately so batteries aren't counted as supply: 57 GW
-(37–88) of 578 GW queued. By year: `outputs/outlook.csv`.
+(37–88) of 578 GW queued. By year: `outputs/outlook.csv`; by state and
+technology: `outputs/outlook_by_state.csv`, `outputs/outlook_by_tech.csv`.
 
-## Three things the data shows
+![By state](figures/state_map.png)
+
+![By technology](figures/outlook_by_tech.png)
+
+## Four things the data shows
 
 1. **About 18% of queued projects get built within 10 years; 75% withdraw.** The
    naive built ÷ total ratio says 12%, because it counts still-waiting projects
@@ -38,7 +45,13 @@ Storage is counted separately so batteries aren't counted as supply: 57 GW
 2. **What dominates the queue is least likely to be built.** Within 10 years:
    solar 15%, storage 11%, solar+storage hybrids 9% — vs gas 32%.
 3. **ERCOT (Texas) builds at 2–3× other regions' rates** — e.g. solar 27% vs 5%
-   in MISO.
+   in MISO. Texas alone accounts for about 35 GW of the likely 2026–30 build.
+4. **The queue is filling faster than it builds.** Between 2013 and 2020, projects
+   entering queues each year nearly quadrupled (687 → 2,569), while the share
+   built within 5 years fell from 24% to 7%. That's why models built on history
+   have become steadily too optimistic.
+
+![Queue entries and build rate over time](figures/drift.png)
 
 ![How projects resolve, by technology](figures/curves_by_tech.png)
 
@@ -64,7 +77,10 @@ Storage is counted separately so batteries aren't counted as supply: 57 GW
   assumes the last few years' conditions continue; if build rates recovered to
   their long-run average, the central estimate would be ~221 GW.
 
-![Backtest](figures/backtest.png)
+![Track record](figures/track_record.png)
+
+Project-level calibration and the model's error at every past date:
+[`figures/backtest.png`](figures/backtest.png).
 
 ## What's new here — and what isn't
 
@@ -113,7 +129,8 @@ uv run python -m src.clean      # Stage 1 -> data/clean/projects.csv
 uv run python -m src.validate   # counts vs the Berkeley Lab report
 uv run python -m src.survival   # Stage 2 -> figures/curves_*.png
 uv run python -m src.backtest   # Stage 3 -> figures/backtest.png, outputs/range_check.csv
-uv run python -m src.simulate   # Stage 4 -> figures/outlook.png, outputs/outlook.csv
+uv run python -m src.simulate   # Stage 4 -> figures/outlook.png, outputs/outlook*.csv
+uv run python -m src.report     # README figures (headline, map, technology, drift, track record)
 uv run pytest                   # 33 tests (the raw-data tests skip if the file is absent)
 ~~~
 
